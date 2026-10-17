@@ -16,6 +16,7 @@ Item {
     property bool sessionOpen: false
     // New property for keyboard state
     property bool keyboardOpen: false 
+    property bool userOpen: false
     
     property alias password: passwordBox.text
 
@@ -224,8 +225,11 @@ Item {
     MouseArea {
         anchors.fill: parent
         z: 1
-        enabled: root.sessionOpen
-        onClicked: root.sessionOpen = false
+        enabled: root.sessionOpen || root.userOpen
+        onClicked: {
+        root.sessionOpen = false
+        root.userOpen = false
+    }
     }
 
     Row {
@@ -270,7 +274,7 @@ Item {
                     verticalAlignment: Text.AlignVCenter
                 }
 
-                // USER SELECTOR DISPLAY
+             // USER SELECTOR DISPLAY
                 Item {
                     id: userSelectorContainer
                     Layout.fillWidth: true
@@ -279,7 +283,6 @@ Item {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         anchors.left: parent.left
-                        // FIXED: Added right anchor to enforce clipping/elision
                         anchors.right: parent.right 
                         text: userSelector.currentText || ""
                         color: textColor
@@ -289,23 +292,71 @@ Item {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: userSelector.popup.open()
+                        // CHANGED: Toggle custom userOpen state instead of default popup
+                        onClicked: root.userOpen = !root.userOpen
                         cursorShape: Qt.PointingHandCursor
                     }
-                }
 
-                Rectangle {
-                    Layout.preferredWidth: 1
-                    Layout.preferredHeight: 24
-                    color: "#4e3725"
-                }
+                    //USER POPUP (Matching session popup style)
+                    Rectangle {
+                        id: userPopup
+                        // Add property to root: property bool userOpen: false
+                        visible: root.userOpen 
+                        z: 100
+                        width: 220
+                        height: Math.min(userModel.count * 45, 300)
+                        
+                        color: surfaceColor
+                        border.color: "#3b2513"
+                        border.width: 1
+                        radius: 12
+                        
+                        anchors.bottom: parent.top
+                        anchors.bottomMargin: 15
+                        anchors.horizontalCenter: parent.horizontalCenter
 
-                Text {
-                    text: "\uF108"
-                    font.family: "Noto Sans"
-                    font.pixelSize: 34
-                    color: "#cccccc"
-                    verticalAlignment: Text.AlignVCenter
+                        ListView {
+                            anchors.fill: parent
+                            anchors.margins: 4
+                            clip: true
+                            model: userModel
+                            
+                            delegate: Rectangle {
+                                width: parent.width
+                                height: 40
+                                color: "transparent"
+                                radius: 8
+                                
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: "#3b2513"
+                                    opacity: 0.5
+                                    // Highlight currently selected user or hovered item
+                                    visible: index === userSelector.currentIndex || userItemMouse.containsMouse
+                                    radius: 8
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    // SDDM userModel usually exposes "name" or "realName" depending on version
+                                    text: name 
+                                    color: textColor
+                                    font.pixelSize: 14
+                                }
+
+                                MouseArea {
+                                    id: userItemMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        userSelector.currentIndex = index
+                                        root.userOpen = false
+                                        passwordBox.forceActiveFocus()
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // SESSION SELECTOR DISPLAY
